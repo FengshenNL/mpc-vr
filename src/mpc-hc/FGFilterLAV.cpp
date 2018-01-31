@@ -588,6 +588,8 @@ void CFGFilterLAVVideo::Settings::LoadSettings()
     CMPlayerCApp* pApp = AfxGetMyApp();
     ASSERT(pApp);
 
+    bOverUnder = pApp->GetProfileInt(IDS_R_INTERNAL_LAVVIDEO, _T("OverUnder"), bOverUnder);
+
     bTrayIcon = pApp->GetProfileInt(IDS_R_INTERNAL_LAVVIDEO, _T("TrayIcon"), bTrayIcon);
 
     dwStreamAR = pApp->GetProfileInt(IDS_R_INTERNAL_LAVVIDEO, _T("StreamAR"), dwStreamAR);
@@ -663,6 +665,8 @@ void CFGFilterLAVVideo::Settings::SaveSettings()
     CMPlayerCApp* pApp = AfxGetMyApp();
     ASSERT(pApp);
 
+    pApp->WriteProfileInt(IDS_R_INTERNAL_LAVVIDEO, _T("OverUnder"), bOverUnder);
+
     pApp->WriteProfileInt(IDS_R_INTERNAL_LAVVIDEO, _T("TrayIcon"), bTrayIcon);
 
     pApp->WriteProfileInt(IDS_R_INTERNAL_LAVVIDEO, _T("StreamAR"), dwStreamAR);
@@ -718,6 +722,8 @@ bool CFGFilterLAVVideo::Settings::GetSettings(CComQIPtr<ILAVVideoSettings> pLAVF
         return false;
     }
 
+    bOverUnder = pLAVFSettings->GetOverUnder();
+
     bTrayIcon = pLAVFSettings->GetTrayIcon();
 
     dwStreamAR = pLAVFSettings->GetStreamAR();
@@ -762,6 +768,8 @@ bool CFGFilterLAVVideo::Settings::SetSettings(CComQIPtr<ILAVVideoSettings> pLAVF
     if (!pLAVFSettings) {
         return false;
     }
+
+    pLAVFSettings->SetOverUnder(bOverUnder);
 
     pLAVFSettings->SetTrayIcon(bTrayIcon);
 

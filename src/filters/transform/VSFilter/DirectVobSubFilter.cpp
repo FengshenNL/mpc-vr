@@ -20,6 +20,10 @@
  */
 
 #include "stdafx.h"
+
+// Initialize the GUIDs
+#include <InitGuid.h>
+
 #include <math.h>
 #include <time.h>
 #include "DirectVobSubFilter.h"
@@ -33,6 +37,8 @@
 #include "../../../SubPic/SubPicQueueImpl.h"
 #include "../../../Subtitles/RLECodedSubtitle.h"
 #include "../../../Subtitles/PGSSub.h"
+DEFINE_GUID(GUID_LAVSplitter, 0x171252A0, 0x8820, 0x4AFE, 0x9D, 0xF8, 0x5C, 0x92, 0xB2, 0xD6, 0x6B, 0x04);
+DEFINE_GUID(GUID_LAVSplitterSource, 0xB98D13E7, 0x55DB, 0x4385, 0xA3, 0x3D, 0x09, 0xFD, 0x1B, 0xA2, 0x63, 0x38);
 
 #include <d3d9.h>
 #include <dxva2api.h>
@@ -43,13 +49,210 @@
 /*removeme*/
 bool g_RegOK = true;//false; // doesn't work with the dvd graph builder
 
+
+COverUnderMediaSample::COverUnderMediaSample(LPCTSTR pName, CBaseAllocator *pAllocator, HRESULT *phr, LPBYTE pBuffer, LONG length)
+    : CMediaSample(pName, pAllocator, phr, pBuffer, length)
+{
+    m_3DOffsets.offset_count = 0;
+}
+
+COverUnderMediaSample::~COverUnderMediaSample()
+{
+}
+
+STDMETHODIMP COverUnderMediaSample::QueryInterface(REFIID riid, void **ppv)
+{
+    if (riid == __uuidof(IMediaSideData)) {
+        return GetInterface((IMediaSideData *) this, ppv);
+    }
+    return CMediaSample::QueryInterface(riid, ppv);
+}
+
+STDMETHODIMP COverUnderMediaSample::SetSideData(GUID guidType, const BYTE *pData, size_t size)
+{
+    if (guidType != IID_MediaSideData3DOffset || size != sizeof(MediaSideData3DOffset))
+        return E_INVALIDARG;
+    if (!pData)
+        return E_POINTER;
+    m_3DOffsets = *(const MediaSideData3DOffset *) pData;
+    return S_OK;
+}
+
+STDMETHODIMP COverUnderMediaSample::GetSideData(GUID guidType, const BYTE **pData, size_t *pSize)
+{
+    if (guidType != IID_MediaSideData3DOffset)
+        return E_INVALIDARG;
+    if (pData)
+        *pData = (const BYTE *) &m_3DOffsets;
+    if (pSize)
+        *pSize = sizeof(MediaSideData3DOffset);
+    return S_OK;
+}
+
+COverUnderVideoFilter::COverUnderVideoFilter(TCHAR* pName, LPUNKNOWN lpunk, HRESULT* phr, REFCLSID clsid, long cBuffers)
+    : CBaseVideoFilter(pName, lpunk, phr, clsid, cBuffers)
+{
+    HRESULT hr = S_OK;
+    if (!phr) {
+        phr = &hr;
+    }
+    if (FAILED(*phr)) {
+        return;
+    }
+
+    delete m_pInput;
+    m_pInput = DEBUG_NEW COverUnderVideoInputPin(NAME("COverUnderVideoInputPin"), this, phr, L"Video");
+    if (!m_pInput) {
+        *phr = E_OUTOFMEMORY;
+    }
+    if (FAILED(*phr)) {
+        delete m_pOutput;
+        m_pOutput = nullptr;
+    }
+}
+
+COverUnderVideoFilter::~COverUnderVideoFilter()
+{
+}
+
+COverUnderVideoInputAllocator::COverUnderVideoInputAllocator(HRESULT* phr)
+    : CBaseVideoInputAllocator(phr)
+{
+}
+
+HRESULT COverUnderVideoInputAllocator::Alloc(void)
+{
+    CAutoLock lck(this);
+
+    /* Check he has called SetProperties */
+    HRESULT hr = CBaseAllocator::Alloc();
+    if (FAILED(hr)) {
+        return hr;
+    }
+
+    /* If the requirements haven't changed then don't reallocate */
+    if (hr == S_FALSE) {
+        ASSERT(m_pBuffer);
+        return NOERROR;
+    }
+    ASSERT(hr == S_OK); // we use this fact in the loop below
+
+    /* Free the old resources */
+    if (m_pBuffer) {
+        ReallyFree();
+    }
+
+    /* Make sure we've got reasonable values */
+    if ( m_lSize < 0 || m_lPrefix < 0 || m_lCount < 0 ) {
+        return E_OUTOFMEMORY;
+    }
+
+    /* Compute the aligned size */
+    LONG lAlignedSize = m_lSize + m_lPrefix;
+
+    /*  Check overflow */
+    if (lAlignedSize < m_lSize) {
+        return E_OUTOFMEMORY;
+    }
+
+    if (m_lAlignment > 1) {
+        LONG lRemainder = lAlignedSize % m_lAlignment;
+        if (lRemainder != 0) {
+            LONG lNewSize = lAlignedSize + m_lAlignment - lRemainder;
+            if (lNewSize < lAlignedSize) {
+                return E_OUTOFMEMORY;
+            }
+            lAlignedSize = lNewSize;
+        }
+    }
+
+    /* Create the contiguous memory block for the samples
+       making sure it's properly aligned (64K should be enough!)
+    */
+    ASSERT(lAlignedSize % m_lAlignment == 0);
+
+    LONGLONG lToAllocate = m_lCount * (LONGLONG)lAlignedSize;
+
+    /*  Check overflow */
+    if (lToAllocate > MAXLONG) {
+        return E_OUTOFMEMORY;
+    }
+
+    m_pBuffer = (PBYTE)VirtualAlloc(NULL,
+                    (LONG)lToAllocate,
+                    MEM_COMMIT,
+                    PAGE_READWRITE);
+
+    if (m_pBuffer == NULL) {
+        return E_OUTOFMEMORY;
+    }
+
+    LPBYTE pNext = m_pBuffer;
+    CMediaSample *pSample;
+
+    ASSERT(m_lAllocated == 0);
+
+    // Create the new samples - we have allocated m_lSize bytes for each sample
+    // plus m_lPrefix bytes per sample as a prefix. We set the pointer to
+    // the memory after the prefix - so that GetPointer() will return a pointer
+    // to m_lSize bytes.
+    for (; m_lAllocated < m_lCount; m_lAllocated++, pNext += lAlignedSize) {
+
+
+        pSample = new COverUnderMediaSample(
+                            NAME("Over/under media sample"),
+                this,
+                            &hr,
+                            pNext + m_lPrefix,      // GetPointer() value
+                            m_lSize);               // not including prefix
+
+            ASSERT(SUCCEEDED(hr));
+        if (pSample == NULL) {
+            return E_OUTOFMEMORY;
+        }
+
+        // This CANNOT fail
+        m_lFree.Add(pSample);
+    }
+
+    m_bChanged = FALSE;
+    return NOERROR;
+}
+
+COverUnderVideoInputPin::COverUnderVideoInputPin(TCHAR* pObjectName, COverUnderVideoFilter* pFilter, HRESULT* phr, LPCWSTR pName)
+    : CBaseVideoInputPin(pObjectName, pFilter, phr, pName)
+{
+}
+
+COverUnderVideoInputPin::~COverUnderVideoInputPin()
+{
+}
+
+STDMETHODIMP COverUnderVideoInputPin::GetAllocator(IMemAllocator** ppAllocator)
+{
+    CheckPointer(ppAllocator, E_POINTER);
+
+    if (m_pAllocator == nullptr) {
+        HRESULT hr = S_OK;
+        m_pAllocator = DEBUG_NEW COverUnderVideoInputAllocator(&hr);
+        m_pAllocator->AddRef();
+    }
+
+    (*ppAllocator = m_pAllocator)->AddRef();
+
+    return S_OK;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////
 //
 // Constructor
 //
 
 CDirectVobSubFilter::CDirectVobSubFilter(LPUNKNOWN punk, HRESULT* phr, const GUID& clsid)
-    : CBaseVideoFilter(NAME("CDirectVobSubFilter"), punk, phr, clsid)
+    : COverUnderVideoFilter(NAME("CDirectVobSubFilter"), punk, phr, clsid)
+    , m_b3DRL(false)
+    , m_i3DOffsetIdx(-1)
     , m_hdc(0)
     , m_hbm(0)
     , m_hfont(0)
@@ -311,7 +514,29 @@ HRESULT CDirectVobSubFilter::Transform(IMediaSample* pIn)
                     spd.h = -spd.h;
                 }
 
-                pSubPic->AlphaBlt(r, r, &spd);
+                SubPicDesc spdOri;
+                pSubPic->GetDesc(spdOri);
+                CComQIPtr<IMediaSideData> pMediaSideData = pIn;
+                const BYTE *pbOffsets;
+                // HACK: Detect over/under to stereoize subtitle
+                if (m_spd.h == spdOri.h * 2 && pMediaSideData && SUCCEEDED(pMediaSideData->GetSideData(IID_MediaSideData3DOffset, &pbOffsets, nullptr)))
+                {
+                    int xOffsetInPixels = 0;
+                    const MediaSideData3DOffset *p3DOffsets = (const MediaSideData3DOffset *)pbOffsets;
+                    if (m_i3DOffsetIdx >= 0 && m_i3DOffsetIdx < p3DOffsets->offset_count)
+                        xOffsetInPixels = p3DOffsets->offset[m_i3DOffsetIdx];
+                    else if (m_i3DOffsetIdx < 0)
+                        for (int i = 0; i < p3DOffsets->offset_count; ++i)
+                            xOffsetInPixels = std::max(xOffsetInPixels, p3DOffsets->offset[i]);
+                    if (m_b3DRL)
+                        xOffsetInPixels = -xOffsetInPixels;
+                    CRect rDst = r + CSize(xOffsetInPixels, 0);
+                    pSubPic->AlphaBlt(r, rDst, &spd);
+                    rDst = r + CSize(-xOffsetInPixels, spdOri.h);
+                    pSubPic->AlphaBlt(r, rDst, &spd);
+                }
+                else
+                    pSubPic->AlphaBlt(r, r, &spd);
             }
         }
     }
@@ -1681,6 +1906,19 @@ void CDirectVobSubFilter::InvalidateSubtitle(REFERENCE_TIME rtInvalidate /*= -1*
         if (nSubtitleId == DWORD_PTR_MAX || nSubtitleId == (DWORD_PTR)(ISubStream*)m_pCurrentSubStream) {
             m_pSubPicQueue->Invalidate(rtInvalidate);
         }
+    }
+
+    if (rtInvalidate)
+    {
+        CComPtr<IBaseFilter> pBF;
+        if ((pBF = FindFilter(GUID_LAVSplitter, m_pGraph)) || (pBF = FindFilter(GUID_LAVSplitterSource, m_pGraph)))
+            if (CComQIPtr<IPropertyBag> pPB = pBF) {
+                CComVariant varMode, varId;
+                if (SUCCEEDED(pPB->Read(L"stereoscopic3dmode", &varMode, nullptr)) && varMode.vt == VT_BSTR)
+                    m_b3DRL = !wcscmp(varMode.bstrVal, L"mvc_rl");
+                if (SUCCEEDED(pPB->Read(L"stereo_subtitle_offset_id", &varId, nullptr)) && varId.vt == VT_BSTR)
+                    m_i3DOffsetIdx = _tcstol(varId.bstrVal, nullptr, 10);
+            }
     }
 }
 

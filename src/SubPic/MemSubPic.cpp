@@ -193,6 +193,11 @@ STDMETHODIMP CMemSubPic::Unlock(RECT* pDirtyRect)
     }
 
     CRect r = m_spd.vidrect;
+    // HACK: Detect over/under to prevent subtitle stretching
+    if (m_spd.h * 2 == r.Height() && m_spd.w == r.Width())
+    {
+        r.bottom = r.top + m_spd.h;
+    }
     CRect rcDirty = m_rcDirty;
     if (m_spd.h != r.Height() || m_spd.w != r.Width()) {
         if (!m_resizedSpd) {

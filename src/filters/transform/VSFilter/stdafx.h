@@ -38,5 +38,3 @@
 #include "BaseClasses/streams.h"
 #include <dvdmedia.h>
 #include "../../../DSUtil/DSUtil.h"
-
-#include "DirectVobSubFilter.h"

@@ -47,7 +47,7 @@ copy_libs() {
 clean() {
   cd ${FFMPEG_BUILD_PATH}
   echo Cleaning...
-  if [ -f config.mak ]; then
+  if [ -f ffbuild/config.mak ]; then
     make distclean > /dev/null 2>&1
   fi
   cd ${BASEDIR}
@@ -115,8 +115,8 @@ build() {
 configureAndBuild() {
   cd ${FFMPEG_BUILD_PATH}
   ## Don't run configure again if it was previously run
-  if [ ../../../ffmpeg/configure -ot config.mak ] &&
-     [ ../../../../build_ffmpeg.sh -ot config.mak ]; then
+  if [ ../../../ffmpeg/configure -ot ffbuild/config.mak ] &&
+     [ ../../../../build_ffmpeg.sh -ot ffbuild/config.mak ]; then
     echo Skipping configure...
   else
     echo Configuring...
@@ -149,7 +149,7 @@ if [ "${3}" == "Clean" ]; then
   CONFIGRETVAL=$?
 else
   ## Check if configure was previously run
-  if [ -f config.mak ]; then
+  if [ -f ffbuild/config.mak ]; then
     CLEANBUILD=0
   else
     CLEANBUILD=1

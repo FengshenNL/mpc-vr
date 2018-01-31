@@ -83,6 +83,7 @@ public:
 
 class CBaseVideoInputPin : public CTransformInputPin
 {
+protected:
     CBaseVideoInputAllocator* m_pAllocator;
 
 public:

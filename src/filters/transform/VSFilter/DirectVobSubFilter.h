@@ -26,6 +26,7 @@
 #include "../BaseVideoFilter/BaseVideoFilter.h"
 #include "../../../Subtitles/VobSubFile.h"
 #include "../../../Subtitles/RTS.h"
+#include "../../../thirdparty/LAVFilters/src/common/includes/IMediaSideData.h"
 
 struct SystrayIconData {
     HWND hSystrayWnd;
@@ -34,11 +35,57 @@ struct SystrayIconData {
     bool fRunOnce, fShowIcon;
 };
 
+
+class COverUnderMediaSample : public CMediaSample, IMediaSideData
+{
+public:
+    COverUnderMediaSample(LPCTSTR pName, CBaseAllocator *pAllocator, HRESULT *phr, LPBYTE pBuffer = NULL, LONG length = 0);
+    virtual ~COverUnderMediaSample();
+
+    // IUnknown
+    STDMETHODIMP QueryInterface(REFIID riid, void **ppv);
+    STDMETHODIMP_(ULONG) AddRef() { return CMediaSample::AddRef(); }
+    STDMETHODIMP_(ULONG) Release() { return CMediaSample::Release(); }
+
+    // IMediaSideData
+    STDMETHODIMP SetSideData(GUID guidType, const BYTE *pData, size_t size);
+    STDMETHODIMP GetSideData(GUID guidType, const BYTE **pData, size_t *pSize);
+
+protected:
+    MediaSideData3DOffset m_3DOffsets;
+};
+
+class COverUnderVideoFilter : public CBaseVideoFilter
+{
+public:
+    COverUnderVideoFilter(TCHAR* pName, LPUNKNOWN lpunk, HRESULT* phr, REFCLSID clsid, long cBuffers = 1);
+    virtual ~COverUnderVideoFilter();
+};
+
+class COverUnderVideoInputAllocator : public CBaseVideoInputAllocator
+{
+public:
+    COverUnderVideoInputAllocator(HRESULT* phr);
+
+protected:
+    HRESULT Alloc(void);
+};
+
+class COverUnderVideoInputPin : public CBaseVideoInputPin
+{
+public:
+    COverUnderVideoInputPin(TCHAR* pObjectName, COverUnderVideoFilter* pFilter, HRESULT* phr, LPCWSTR pName);
+    ~COverUnderVideoInputPin();
+
+    STDMETHODIMP GetAllocator(IMemAllocator** ppAllocator);
+};
+
+
 /* This is for graphedit */
 
 class __declspec(uuid("93A22E7A-5091-45ef-BA61-6DA26156A5D0"))
     CDirectVobSubFilter
-    : public CBaseVideoFilter
+    : public COverUnderVideoFilter
     , public CDirectVobSub
     , public ISpecifyPropertyPages
     , public IAMStreamSelect
@@ -50,6 +97,8 @@ class __declspec(uuid("93A22E7A-5091-45ef-BA61-6DA26156A5D0"))
     CComPtr<ISubPicQueue> m_pSubPicQueue;
     void InitSubPicQueue();
     SubPicDesc m_spd;
+    bool m_b3DRL;
+    int m_i3DOffsetIdx;
 
     bool AdjustFrameSize(CSize& s);
 

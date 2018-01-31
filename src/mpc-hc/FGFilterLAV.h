@@ -157,6 +157,7 @@ class CFGFilterLAVVideo : public CFGFilterLAV
 {
 public:
     struct Settings {
+        BOOL bOverUnder;
         BOOL bTrayIcon;
         DWORD dwStreamAR;
         DWORD dwNumThreads;

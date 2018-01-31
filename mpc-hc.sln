@@ -857,6 +857,7 @@ Global
 		{54DDA60F-E528-4D07-A152-960A1E818680}.Debug Lite|Win32.ActiveCfg = Debug|Win32
 		{54DDA60F-E528-4D07-A152-960A1E818680}.Debug Lite|x64.ActiveCfg = Debug|x64
 		{54DDA60F-E528-4D07-A152-960A1E818680}.Debug|Win32.ActiveCfg = Debug|Win32
+		{54DDA60F-E528-4D07-A152-960A1E818680}.Debug|Win32.Build.0 = Debug|Win32
 		{54DDA60F-E528-4D07-A152-960A1E818680}.Debug|x64.ActiveCfg = Debug|x64
 		{54DDA60F-E528-4D07-A152-960A1E818680}.Release Filter|Win32.ActiveCfg = Release|Win32
 		{54DDA60F-E528-4D07-A152-960A1E818680}.Release Filter|Win32.Build.0 = Release|Win32
@@ -865,6 +866,7 @@ Global
 		{54DDA60F-E528-4D07-A152-960A1E818680}.Release Lite|Win32.ActiveCfg = Release|Win32
 		{54DDA60F-E528-4D07-A152-960A1E818680}.Release Lite|x64.ActiveCfg = Release|x64
 		{54DDA60F-E528-4D07-A152-960A1E818680}.Release|Win32.ActiveCfg = Release|Win32
+		{54DDA60F-E528-4D07-A152-960A1E818680}.Release|Win32.Build.0 = Release|Win32
 		{54DDA60F-E528-4D07-A152-960A1E818680}.Release|x64.ActiveCfg = Release|x64
 		{9DCFD02A-16A0-4766-BC18-66163E21929D}.Debug Filter|Win32.ActiveCfg = Debug Filter|Win32
 		{9DCFD02A-16A0-4766-BC18-66163E21929D}.Debug Filter|Win32.Build.0 = Debug Filter|Win32
@@ -969,6 +971,7 @@ Global
 		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Debug Lite|Win32.ActiveCfg = Debug Filter|Win32
 		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Debug Lite|x64.ActiveCfg = Debug Filter|x64
 		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Debug|Win32.ActiveCfg = Debug Filter|Win32
+		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Debug|Win32.Build.0 = Debug Filter|Win32
 		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Debug|x64.ActiveCfg = Debug Filter|x64
 		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Release Filter|Win32.ActiveCfg = Release Filter|Win32
 		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Release Filter|Win32.Build.0 = Release Filter|Win32
@@ -977,6 +980,7 @@ Global
 		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Release Lite|Win32.ActiveCfg = Release Filter|Win32
 		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Release Lite|x64.ActiveCfg = Release Filter|x64
 		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Release|Win32.ActiveCfg = Release Filter|Win32
+		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Release|Win32.Build.0 = Release Filter|Win32
 		{F671100C-469F-4723-AAC4-B7FE4F5B8DC4}.Release|x64.ActiveCfg = Release Filter|x64
 		{DA8461C4-7683-4360-9372-2A9E0F1795C2}.Debug Filter|Win32.ActiveCfg = Debug|Win32
 		{DA8461C4-7683-4360-9372-2A9E0F1795C2}.Debug Filter|Win32.Build.0 = Debug|Win32
